@@ -5,4 +5,4 @@ project(cpp_project)
 add_executable(test
     main.cpp)
 
-set_target_properties(test PROPERTIES CXX_STANDARD 23)
+target_compile_features(test PUBLIC cxx_std_20)
