@@ -36,3 +36,67 @@ void DispatchMessage(MSG*){}
 HWND CreateWindowA(LPCSTR,...){ return nullptr; }
 void AdjustWindowRect(RECT*,...){}
 #endif
+
+#include <stdexcept>
+
+namespace win32_helper{
+class Window {
+public:
+	Window() : m_handle{ create_window() } {
+
+	}
+	HWND get_handle() { return m_handle; }
+	void run() {
+		MSG msg = {};
+		while (GetMessage(&msg, NULL, 0, 0) > 0) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+	}
+
+private:
+	static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+		switch (uMsg)
+		{
+		case WM_DESTROY:
+			PostQuitMessage(0);
+			return 0;
+		}
+		return DefWindowProcA(hwnd, uMsg, wParam, lParam);
+	}
+	HWND create_window() {
+		const char CLASS_NAME[] = "Sample Window Class";
+
+		auto hInstance = GetModuleHandleA(NULL);
+
+		WNDCLASSA wc = {};
+
+		wc.lpfnWndProc = WindowProc;
+		wc.hInstance = hInstance;
+		wc.lpszClassName = CLASS_NAME;
+
+		RegisterClass(&wc);
+
+		HWND handle = CreateWindowExA(
+			0,
+			CLASS_NAME,
+			"Sample",
+			WS_OVERLAPPEDWINDOW,
+			CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+			NULL,
+			NULL,
+			hInstance,
+			NULL
+		);
+
+		if (handle == NULL) {
+			throw std::runtime_error{ "Create Window fail" };
+		}
+
+		ShowWindow(handle, SW_NORMAL);
+
+		return handle;
+	}
+	HWND m_handle;
+};
+}
