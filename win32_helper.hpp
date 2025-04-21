@@ -38,6 +38,9 @@ void AdjustWindowRect(RECT*,...){}
 #endif
 
 #include <stdexcept>
+#include <thread>
+#include <mutex>
+#include <latch>
 
 namespace win32_helper{
 class Window {
@@ -48,9 +51,9 @@ public:
 	HWND get_handle() { return m_handle; }
 	void run() {
 		MSG msg = {};
-		while (GetMessage(&msg, NULL, 0, 0) > 0) {
+		while (GetMessageA(&msg, NULL, 0, 0) > 0) {
 			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+			DispatchMessageA(&msg);
 		}
 	}
 
@@ -75,7 +78,7 @@ private:
 		wc.hInstance = hInstance;
 		wc.lpszClassName = CLASS_NAME;
 
-		RegisterClass(&wc);
+		RegisterClassA(&wc);
 
 		HWND handle = CreateWindowExA(
 			0,
@@ -98,5 +101,38 @@ private:
 		return handle;
 	}
 	HWND m_handle;
+};
+class WindowWithinThread {
+public:
+	WindowWithinThread() : WindowWithinThread{ create_window_thread() } {};
+	WindowWithinThread(std::pair<std::thread, Window&> pair)
+		: m_thread{std::move(pair.first)}, m_window{pair.second} {
+	}
+	~WindowWithinThread() {
+		m_thread.join();
+	}
+	auto& get_thread() {
+		return m_thread;
+	}
+	auto& get_window() {
+		return m_window;
+	}
+private:
+	static std::pair<std::thread, Window&> create_window_thread() {
+		Window* p_window;
+		std::latch window_created{ 1 };
+		auto thread = std::thread{
+			[&p_window, &window_created]() {
+				Window window{};
+				p_window = &window;
+				window_created.count_down();
+				window.run();
+			}
+		};
+		window_created.wait();
+		return std::pair<std::thread, Window&>{ std::move(thread), *p_window };
+	}
+	std::thread m_thread;
+	Window& m_window;
 };
 }
