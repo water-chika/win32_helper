@@ -1,5 +1,5 @@
 #pragma once
-#ifdef WIN32
+#ifdef _WIN32
 #include<windows.h>
 #else
 using HWND = int*;
@@ -45,7 +45,8 @@ void AdjustWindowRect(RECT*,...){}
 namespace win32_helper{
 class Window {
 public:
-	Window() : m_handle{ create_window() } {
+	Window() : Window(CW_USEDEFAULT,CW_USEDEFAULT) {}
+	Window(auto width, auto height) : m_handle{ create_window(width, height) } {
 
 	}
 	HWND get_handle() { return m_handle; }
@@ -67,7 +68,7 @@ private:
 		}
 		return DefWindowProcA(hwnd, uMsg, wParam, lParam);
 	}
-	HWND create_window() {
+	HWND create_window(auto width, auto height) {
 		const char CLASS_NAME[] = "Sample Window Class";
 
 		auto hInstance = GetModuleHandleA(NULL);
@@ -85,7 +86,7 @@ private:
 			CLASS_NAME,
 			"Sample",
 			WS_OVERLAPPEDWINDOW,
-			CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+			CW_USEDEFAULT, CW_USEDEFAULT, width, height,
 			NULL,
 			NULL,
 			hInstance,
