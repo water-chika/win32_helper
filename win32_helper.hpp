@@ -136,4 +136,57 @@ private:
 	std::thread m_thread;
 	Window& m_window;
 };
+
+static inline auto query_display_config_path_infos(uint32_t flags) {
+	std::vector<DISPLAYCONFIG_PATH_INFO> path_infos{};
+	uint32_t path_info_count{ 0 };
+
+	LONG res;
+	do
+	{
+		res = GetDisplayConfigBufferSizes(flags, &path_info_count, nullptr);
+		if (res != ERROR_SUCCESS)
+		{
+			throw std::runtime_error{ "GetDisplayConfigBufferSizes fail" };
+		}
+
+		path_infos.resize(path_info_count);
+		res = QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_info_count, path_infos.data(), nullptr, nullptr, nullptr);
+	} while (res == ERROR_INSUFFICIENT_BUFFER);
+
+	if (res != ERROR_SUCCESS) {
+		throw std::runtime_error{ "QueryDisplayConfig fail" };
+	}
+
+	return path_infos;
+}
+
+static inline auto query_display_config(uint32_t flags) {
+	std::vector<DISPLAYCONFIG_PATH_INFO> path_infos{};
+	std::vector<DISPLAYCONFIG_MODE_INFO> mode_infos{};
+	uint32_t path_info_count{ 0 }, mode_info_count{ 0 };
+
+	LONG res;
+	do
+	{
+		res = GetDisplayConfigBufferSizes(flags, &path_info_count, &mode_info_count);
+		if (res != ERROR_SUCCESS)
+		{
+			throw std::runtime_error{ "GetDisplayConfigBufferSizes fail" };
+		}
+
+		path_infos.resize(path_info_count);
+
+		mode_infos.resize(mode_info_count);
+
+		res = QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_info_count, path_infos.data(), &mode_info_count, mode_infos.data(), nullptr);
+	} while (res == ERROR_INSUFFICIENT_BUFFER);
+
+	if (res != ERROR_SUCCESS) {
+		throw std::runtime_error{ "QueryDisplayConfig fail" };
+	}
+
+	return std::pair{ std::move(path_infos), std::move(mode_infos) };
+}
+
 }
