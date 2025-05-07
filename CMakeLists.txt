@@ -9,7 +9,7 @@ add_library(win32_helper
 target_compile_features(win32_helper PUBLIC cxx_std_20)
 target_include_directories(win32_helper PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
-add_executable(test
+add_executable(win32_helper_test
     main.cpp)
 
-target_link_libraries(test PUBLIC win32_helper)
+target_link_libraries(win32_helper_test PUBLIC win32_helper)
