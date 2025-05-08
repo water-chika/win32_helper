@@ -143,30 +143,6 @@ private:
 	Window& m_window;
 };
 
-static inline auto query_display_config_path_infos(uint32_t flags) {
-	std::vector<DISPLAYCONFIG_PATH_INFO> path_infos{};
-	uint32_t path_info_count{ 0 };
-
-	LONG res;
-	do
-	{
-		res = GetDisplayConfigBufferSizes(flags, &path_info_count, nullptr);
-		if (res != ERROR_SUCCESS)
-		{
-			throw std::runtime_error{ "GetDisplayConfigBufferSizes fail" };
-		}
-
-		path_infos.resize(path_info_count);
-		res = QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_info_count, path_infos.data(), nullptr, nullptr, nullptr);
-	} while (res == ERROR_INSUFFICIENT_BUFFER);
-
-	if (res != ERROR_SUCCESS) {
-		throw std::runtime_error{ "QueryDisplayConfig fail" };
-	}
-
-	return path_infos;
-}
-
 static inline auto query_display_config(uint32_t flags) {
 	std::vector<DISPLAYCONFIG_PATH_INFO> path_infos{};
 	std::vector<DISPLAYCONFIG_MODE_INFO> mode_infos{};
@@ -244,7 +220,22 @@ static inline auto foreach_registry_sub_key_name(HKEY key, auto fun) {
 	} while (true);
 }
 
+template<int Index, typename T0, typename T1>
+struct select {
+};
+template<typename T0, typename T1>
+struct select<0, T0, T1> {
+	using type = T1;
+};
+template<typename T0, typename T1>
+struct select<1, T0, T1> {
+	using type = T1;
+};
+template<int Index, typename T0, typename T1>
+using select_t = select<Index, T0, T1>::type;
+
 static inline auto registry_query_value(HKEY key, string_or_wide_string auto& name) {
+	using string = select_t<std::same_as<typename std::remove_cvref_t<decltype(name)>::value_type, wchar_t>, std::string, std::wstring>;
 	std::vector<uint8_t> data_buf(64);
 	DWORD data_type{}, data_size{ static_cast<DWORD>(data_buf.size()) };
 	auto res = overloads{ RegQueryValueExW, RegQueryValueExA}(key, name.data(), nullptr, &data_type, data_buf.data(), &data_size);
@@ -256,12 +247,12 @@ static inline auto registry_query_value(HKEY key, string_or_wide_string auto& na
 		throw std::runtime_error{ "RegQueryValueExW fail" };
 	}
 
-	std::variant<DWORD, std::string, std::vector<uint8_t>> data{};
+	std::variant<DWORD, string, std::vector<uint8_t>> data{};
 	if (data_type == REG_DWORD) {
 		data = *reinterpret_cast<DWORD*>(data_buf.data());
 	}
 	else if (data_type == REG_SZ) {
-		data = std::string{ reinterpret_cast<const char*>(data_buf.data()) };
+		data = string{ reinterpret_cast<string::value_type*>(data_buf.data()) };
 	}
 	else if (data_type == REG_BINARY) {
 		data = data_buf;
