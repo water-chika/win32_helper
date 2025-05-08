@@ -220,22 +220,9 @@ static inline auto foreach_registry_sub_key_name(HKEY key, auto fun) {
 	} while (true);
 }
 
-template<int Index, typename T0, typename T1>
-struct select {
-};
-template<typename T0, typename T1>
-struct select<0, T0, T1> {
-	using type = T1;
-};
-template<typename T0, typename T1>
-struct select<1, T0, T1> {
-	using type = T1;
-};
-template<int Index, typename T0, typename T1>
-using select_t = select<Index, T0, T1>::type;
 
 static inline auto registry_query_value(HKEY key, string_or_wide_string auto& name) {
-	using string = select_t<std::same_as<typename std::remove_cvref_t<decltype(name)>::value_type, wchar_t>, std::string, std::wstring>;
+	using string = std::basic_string<std::remove_cvref_t<decltype(name[0])>>;
 	std::vector<uint8_t> data_buf(64);
 	DWORD data_type{}, data_size{ static_cast<DWORD>(data_buf.size()) };
 	auto res = overloads{ RegQueryValueExW, RegQueryValueExA}(key, name.data(), nullptr, &data_type, data_buf.data(), &data_size);
