@@ -158,7 +158,7 @@ static inline auto get_display_monitors() {
 }
 
 static inline auto get_monitor_info(HMONITOR monitor) {
-	MONITORINFO monitor_info{};
+	MONITORINFOEXA monitor_info{};
 	bool success = GetMonitorInfoA(monitor, &monitor_info);
 	if (!success) {
 		throw std::runtime_error{ "GetMonitorInfo fail" };
@@ -179,6 +179,23 @@ static inline auto get_display_monitors(std::string adapter_name) {
 		display_devices.emplace_back(display_device);
 	}
 	return display_devices;
+}
+
+static inline auto get_display_device_modes(const char* device_name) {
+	std::vector<DEVMODEA> modes{};
+	for (DEVMODEA mode{ .dmSize = sizeof(mode) }; EnumDisplaySettingsA(device_name, modes.size(), &mode);) {
+		modes.emplace_back(mode);
+	}
+	return modes;
+}
+
+static inline auto get_display_device_current_mode(const char* device_name) {
+	DEVMODEA device_mode{.dmSize = sizeof(device_mode)};
+	bool success = EnumDisplaySettingsA(device_name, ENUM_CURRENT_SETTINGS, &device_mode);
+	if (!success) {
+		throw std::runtime_error{ "EnumDisplaySettings fail" };
+	}
+	return device_mode;
 }
 
 static inline auto query_display_config(uint32_t flags) {
