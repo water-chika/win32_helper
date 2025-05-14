@@ -143,6 +143,44 @@ private:
 	Window& m_window;
 };
 
+static inline auto get_display_monitors() {
+	std::vector<HMONITOR> monitors{};
+	MONITORENUMPROC monitor_enum_proc = [](HMONITOR hMonitor,
+		HDC      hdcMonitor,
+		LPRECT   lprcMonitor,
+		LPARAM   dwData) -> BOOL {
+			auto& vector = *reinterpret_cast<std::vector<HMONITOR>*>(dwData);
+			vector.emplace_back(hMonitor);
+			return true;
+		};
+	EnumDisplayMonitors(nullptr, nullptr, monitor_enum_proc, reinterpret_cast<LPARAM>(&monitors));
+	return monitors;
+}
+
+static inline auto get_monitor_info(HMONITOR monitor) {
+	MONITORINFO monitor_info{};
+	bool success = GetMonitorInfoA(monitor, &monitor_info);
+	if (!success) {
+		throw std::runtime_error{ "GetMonitorInfo fail" };
+	}
+	return monitor_info;
+}
+
+static inline auto get_display_adapters() {
+	std::vector<DISPLAY_DEVICEA> display_devices{};
+	for (DISPLAY_DEVICEA display_device{ .cb = sizeof(display_device) }; EnumDisplayDevicesA(nullptr, display_devices.size(), &display_device, 0); ) {
+		display_devices.emplace_back(display_device);
+	}
+	return display_devices;
+}
+static inline auto get_display_monitors(std::string adapter_name) {
+	std::vector<DISPLAY_DEVICEA> display_devices{};
+	for (DISPLAY_DEVICEA display_device{ .cb = sizeof(display_device) }; EnumDisplayDevicesA(adapter_name.c_str(), display_devices.size(), &display_device, 0); ) {
+		display_devices.emplace_back(display_device);
+	}
+	return display_devices;
+}
+
 static inline auto query_display_config(uint32_t flags) {
 	std::vector<DISPLAYCONFIG_PATH_INFO> path_infos{};
 	std::vector<DISPLAYCONFIG_MODE_INFO> mode_infos{};
