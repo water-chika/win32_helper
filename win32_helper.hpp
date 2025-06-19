@@ -143,6 +143,25 @@ private:
 	Window& m_window;
 };
 
+class DeviceContext {
+public:
+	DeviceContext(HWND hwnd, HDC hdc) : m_hwnd{ hwnd }, m_hdc { hdc } {
+		if (hdc == NULL) {
+			throw std::runtime_error{ "hdc is null" };
+		}
+	}
+	~DeviceContext() {
+		ReleaseDC(m_hwnd, m_hdc);
+	}
+
+	auto get_handle() {
+		return m_hdc;
+	}
+private:
+	HWND m_hwnd;
+	HDC m_hdc;
+};
+
 static inline auto get_display_monitors() {
 	std::vector<HMONITOR> monitors{};
 	MONITORENUMPROC monitor_enum_proc = [](HMONITOR hMonitor,
