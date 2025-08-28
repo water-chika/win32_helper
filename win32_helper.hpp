@@ -45,6 +45,7 @@ void AdjustWindowRect(RECT*,...){}
 #include <variant>
 #include <span>
 #include <concepts>
+#include <optional>
 
 #include <cpp_helper.hpp>
 
@@ -351,5 +352,44 @@ public:
 private:
 	HKEY m_key;
 };
+
+
+auto load_library(std::string name) {
+	auto lib = LoadLibraryExA(name.c_str(), nullptr, 0);
+	if (lib == NULL) {
+		throw std::runtime_error{ "failed to open library" };
+	}
+	return lib;
+}
+
+class library {
+public:
+	library(std::string(name)) : m_module{ load_library(name) }
+	{}
+
+	void* get_procedure_address(std::string name) {
+		auto addr =  GetProcAddress(m_module, name.c_str());
+		if (addr == NULL) {
+			throw std::runtime_error{ "failed to get procedure address" };
+		}
+		return addr;
+	}
+	struct no_exception {};
+	std::optional<void*> get_procedure_address(std::string name, no_exception) {
+		auto addr = GetProcAddress(m_module, name.c_str());
+		if (addr != nullptr) {
+			return addr;
+		}
+		else {
+			return std::nullopt;
+		}
+	}
+	~library() {
+		FreeLibrary(m_module);
+	}
+private:
+	HMODULE m_module;
+};
+
 
 }
