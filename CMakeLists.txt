@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.20)
 
 project(win32_helper)
 
-add_subdirectory(cpp_helper)
-
 add_library(win32_helper
     win32_helper.cpp
     win32_helper.hpp)
