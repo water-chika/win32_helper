@@ -419,6 +419,9 @@ public:
 		close();
 		m_handle = h;
 	}
+	auto get() {
+		return m_handle;
+	}
 private:
 	HANDLE m_handle;
 };
@@ -428,9 +431,9 @@ public:
   file_mapping(std::filesystem::path path) {
     hFile.reset(CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL));
-    hMapping.reset(CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL));
-    mmaped_ptr = MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0);
-    m_size = GetFileSize(hFile, NULL);
+    hMapping.reset(CreateFileMapping(hFile.get(), NULL, PAGE_READONLY, 0, 0, NULL));
+    mmaped_ptr = MapViewOfFile(hMapping.get(), FILE_MAP_READ, 0, 0, 0);
+    m_size = GetFileSize(hFile.get(), NULL);
   }
   file_mapping(const file_mapping &file) = delete;
   file_mapping(file_mapping &&file) 
@@ -449,8 +452,8 @@ public:
   file_mapping &operator=(const file_mapping &file) = delete;
   file_mapping &operator=(file_mapping &&file) {
 	mmaped_ptr = file.mmaped_ptr;
-	hMapping.reset(file.hMapping);
-	hFile.reset(file.hFile);
+	hMapping = std::move(file.hMapping);
+	hFile = std::move(file.hFile);
 
 	file.mmaped_ptr = nullptr;
   }
