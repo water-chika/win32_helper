@@ -46,6 +46,8 @@ void AdjustWindowRect(RECT*,...){}
 #include <span>
 #include <concepts>
 #include <optional>
+#include <cassert>
+#include <filesystem>
 
 #include <cpp_helper.hpp>
 
@@ -391,5 +393,83 @@ private:
 	HMODULE m_module;
 };
 
+class handle {
+public:
+	handle() : m_handle{INVALID_HANDLE_VALUE} {}
+	~handle() {
+		close();
+	}
+	handle(handle&& h) {
+		std::swap(m_handle, h.m_handle);
+		h.close();
+	}
+	handle& operator=(handle&& h) {
+		std::swap(m_handle, h.m_handle);
+		h.close();
+	}
+	handle(const handle& h) = delete;
+	handle& operator=(const handle& h) = delete;
+	void close() {
+		if (m_handle != INVALID_HANDLE_VALUE) {
+			CloseHandle(m_handle);
+			m_handle = INVALID_HANDLE_VALUE;
+		}
+	}
+	void reset(HANDLE h) {
+		close();
+		m_handle = h;
+	}
+private:
+	HANDLE m_handle;
+};
+
+class file_mapping {
+public:
+  file_mapping(std::filesystem::path path) {
+    hFile.reset(CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
+                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL));
+    hMapping.reset(CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL));
+    mmaped_ptr = MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0);
+    m_size = GetFileSize(hFile, NULL);
+  }
+  file_mapping(const file_mapping &file) = delete;
+  file_mapping(file_mapping &&file) 
+ :  mmaped_ptr{file.mmaped_ptr},
+	hMapping{std::move(file.hMapping)},
+	hFile{std::move(file.hFile)}
+  {
+	file.mmaped_ptr = nullptr;
+  }
+  ~file_mapping() {
+	if (mmaped_ptr != nullptr) {
+		UnmapViewOfFile(mmaped_ptr);
+		mmaped_ptr = nullptr;
+	}
+  }
+  file_mapping &operator=(const file_mapping &file) = delete;
+  file_mapping &operator=(file_mapping &&file) {
+	mmaped_ptr = file.mmaped_ptr;
+	hMapping.reset(file.hMapping);
+	hFile.reset(file.hFile);
+
+	file.mmaped_ptr = nullptr;
+  }
+
+  const uint32_t *data() const {
+    return static_cast<const uint32_t *>(mmaped_ptr);
+  }
+  // file size
+  size_t size() const { return m_size; }
+
+private:
+  handle hFile;
+  handle hMapping;
+  void *mmaped_ptr;
+  size_t m_size; // count of byte
+};
+
+auto map_file(std::filesystem::path path) {
+	return file_mapping{path};
+}
 
 }
