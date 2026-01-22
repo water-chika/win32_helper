@@ -188,15 +188,19 @@ static inline auto get_monitor_info(HMONITOR monitor) {
 	return monitor_info;
 }
 
+auto enum_display_devices(char* adapter_name, DWORD dev_num, DISPLAY_DEVICE* display_device, DWORD flags) {
+	return EnumDisplayDevicesA(adapter_name, dev_num, display_device, flags);
+}
+
 static inline auto get_display_adapters() {
-	std::vector<DISPLAY_DEVICEA> display_devices{};
-	for (DISPLAY_DEVICEA display_device{ .cb = sizeof(display_device) }; EnumDisplayDevicesA(nullptr, display_devices.size(), &display_device, 0); ) {
+	cpp_helper::small_vector<DISPLAY_DEVICEA, DWORD, 16> display_devices{};
+	for (DISPLAY_DEVICEA display_device{ .cb = sizeof(display_device) }; enum_display_devices(nullptr, display_devices.size(), &display_device, 0); ) {
 		display_devices.emplace_back(display_device);
 	}
 	return display_devices;
 }
 static inline auto get_display_monitors(std::string adapter_name) {
-	std::vector<DISPLAY_DEVICEA> display_devices{};
+	cpp_helper::small_vector<DISPLAY_DEVICEA, DWORD, 16> display_devices{};
 	for (DISPLAY_DEVICEA display_device{ .cb = sizeof(display_device) }; EnumDisplayDevicesA(adapter_name.c_str(), display_devices.size(), &display_device, 0); ) {
 		display_devices.emplace_back(display_device);
 	}
@@ -204,7 +208,7 @@ static inline auto get_display_monitors(std::string adapter_name) {
 }
 
 static inline auto get_display_device_modes(const char* device_name) {
-	std::vector<DEVMODEA> modes{};
+	cpp_helper::small_vector<DEVMODEA, DWORD, 256> modes{};
 	for (DEVMODEA mode{ .dmSize = sizeof(mode) }; EnumDisplaySettingsA(device_name, modes.size(), &mode);) {
 		modes.emplace_back(mode);
 	}
@@ -396,6 +400,7 @@ private:
 class handle {
 public:
 	handle() : m_handle{INVALID_HANDLE_VALUE} {}
+	handle(HANDLE h) : m_handle{h} {}
 	~handle() {
 		close();
 	}
@@ -426,11 +431,19 @@ private:
 	HANDLE m_handle;
 };
 
+handle create_file(std::filesystem::path path, uint32_t perms, uint32_t share_perms, uint32_t open_mode) {
+	HANDLE h = CreateFileW(path.c_str(), perms, share_perms, NULL, open_mode, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (h == INVALID_HANDLE_VALUE) {
+		throw std::runtime_error{std::format("CreatFile failed: {}", path.string())};
+	}
+	return handle{h};
+}
+
 class file_mapping {
 public:
-  file_mapping(std::filesystem::path path) {
-    hFile.reset(CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
-                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL));
+  file_mapping(std::filesystem::path path) :
+	hFile{create_file(path, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING)}
+  {
     hMapping.reset(CreateFileMapping(hFile.get(), NULL, PAGE_READONLY, 0, 0, NULL));
     mmaped_ptr = MapViewOfFile(hMapping.get(), FILE_MAP_READ, 0, 0, 0);
     m_size = GetFileSize(hFile.get(), NULL);
