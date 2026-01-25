@@ -404,7 +404,7 @@ public:
 	~handle() {
 		close();
 	}
-	handle(handle&& h) {
+	handle(handle&& h) : handle{} {
 		std::swap(m_handle, h.m_handle);
 		h.close();
 	}
@@ -471,8 +471,11 @@ public:
 	file.mmaped_ptr = nullptr;
   }
 
-  const uint32_t *data() const {
-    return static_cast<const uint32_t *>(mmaped_ptr);
+  const void* data() const {
+    return mmaped_ptr;
+  }
+  void* data() {
+	return mmaped_ptr;
   }
   // file size
   size_t size() const { return m_size; }
