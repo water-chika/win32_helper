@@ -449,10 +449,11 @@ public:
     m_size = GetFileSize(hFile.get(), NULL);
   }
   file_mapping(const file_mapping &file) = delete;
-  file_mapping(file_mapping &&file) 
+  file_mapping(file_mapping &&file)
  :  mmaped_ptr{file.mmaped_ptr},
 	hMapping{std::move(file.hMapping)},
-	hFile{std::move(file.hFile)}
+	hFile{std::move(file.hFile)},
+	m_size{file.m_size}
   {
 	file.mmaped_ptr = nullptr;
   }
