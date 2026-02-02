@@ -404,7 +404,7 @@ public:
 	~handle() {
 		close();
 	}
-	handle(handle&& h) : handle{} {
+	handle(handle&& h) {
 		std::swap(m_handle, h.m_handle);
 		h.close();
 	}
@@ -449,11 +449,10 @@ public:
     m_size = GetFileSize(hFile.get(), NULL);
   }
   file_mapping(const file_mapping &file) = delete;
-  file_mapping(file_mapping &&file)
+  file_mapping(file_mapping &&file) 
  :  mmaped_ptr{file.mmaped_ptr},
 	hMapping{std::move(file.hMapping)},
-	hFile{std::move(file.hFile)},
-	m_size{file.m_size}
+	hFile{std::move(file.hFile)}
   {
 	file.mmaped_ptr = nullptr;
   }
@@ -472,11 +471,8 @@ public:
 	file.mmaped_ptr = nullptr;
   }
 
-  const void* data() const {
-    return mmaped_ptr;
-  }
-  void* data() {
-	return mmaped_ptr;
+  const uint32_t *data() const {
+    return static_cast<const uint32_t *>(mmaped_ptr);
   }
   // file size
   size_t size() const { return m_size; }
@@ -490,6 +486,21 @@ private:
 
 auto map_file(std::filesystem::path path) {
 	return file_mapping{path};
+}
+
+auto get_module_file_name() {
+	auto module_path = std::vector<char>(512);
+	for (size_t size = module_path.size(); size < 1024*4; size*=2) {
+		module_path.resize(size);
+		auto ret = GetModuleFileNameA(nullptr, module_path.data(), module_path.size());
+		if (ret < module_path.size()) {
+			break;
+		}
+		else if (ret <= 0) {
+			throw std::runtime_error{"GetModuleFileName failed"};
+		}
+	}
+	return module_path;
 }
 
 }
