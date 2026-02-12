@@ -503,4 +503,84 @@ auto get_module_file_name() {
 	return module_path;
 }
 
+inline auto get_firmware_environment_variable(const char* name, const char* namespace_guid, void* buffer, DWORD size) {
+    return GetFirmwareEnvironmentVariableA(name, namespace_guid, buffer, size);
+}
+
+constexpr auto EFI_GLOBAL_VARIABLE = "{8BE4DF61-93CA-11D2-AA0D-00E098032B8C}";
+
+class system_error : public std::exception {
+public:
+    system_error(DWORD error_code) : error_code{error_code} {}
+    const char* what() const noexcept override {
+        const char *lpMsgBuf;
+        FormatMessage(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                FORMAT_MESSAGE_FROM_SYSTEM |
+                FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL,
+            error_code,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPTSTR)&lpMsgBuf,
+            0, NULL);
+        return lpMsgBuf;
+    }
+private:
+    DWORD error_code;
+};
+
+template<typename T = char>
+auto get_firmware_environment_variable(const auto& name) {
+    auto buffer = std::vector<T>(256);
+    for (uint32_t i = 0; i < 4; i++) {
+        auto ret = get_firmware_environment_variable(std::data(name), EFI_GLOBAL_VARIABLE,
+                std::data(buffer), std::size(buffer)*sizeof(buffer[0]));
+        if (ret == 0) {
+            auto error_code = GetLastError();
+            if (error_code == ERROR_INSUFFICIENT_BUFFER) {
+                buffer.resize(buffer.size()*2);
+            }
+            else {
+                throw system_error{error_code};
+            }
+        }
+        else {
+            buffer.resize(ret/sizeof(buffer[0]));
+            break;
+        }
+    }
+    return buffer;
+}
+
+auto& get_firmware_environment_variable(const auto& name, auto& res) {
+    auto ret = get_firmware_environment_variable(std::data(name), EFI_GLOBAL_VARIABLE,
+            &res, sizeof(res));
+    if (ret == 0) {
+        auto error_code = GetLastError();
+        throw system_error{error_code};
+    }
+    return res;
+}
+
+using bootnum_t = uint16_t;
+
+auto get_firmware_environment_variable_boot_order() {
+    return get_firmware_environment_variable<bootnum_t>("BootOrder");
+}
+
+struct efi_load_option {
+    std::vector<char> buffer;
+    char16_t* get_description() {
+        return reinterpret_cast<char16_t*>(buffer.data() + 6);
+    }
+};
+
+auto get_firmware_environment_variable_boot_option(bootnum_t boot_index) {
+    auto boot_name = std::to_array("Boot0000");
+    std::format_to(boot_name.data(), "Boot{:04X}", boot_index);
+    auto buffer = win32_helper::get_firmware_environment_variable(boot_name);
+
+    return efi_load_option{buffer};
+}
+
 }
