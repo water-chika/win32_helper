@@ -6,7 +6,7 @@ using HWND = int*;
 using UINT = unsigned int;
 #define CALLBACK
 using WPARAM = int;
-using LPARAM = int;
+using LPARAM = void*;
 enum {
 WM_CREATE,
 WM_SIZE,
@@ -18,23 +18,68 @@ void PostQuitMessage(int){}
 using LRESULT = int;
 LRESULT DefWindowProcA(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){ return LRESULT{}; }
 using ATOM = int;
-struct WNDCLASS{int* hInstance; const char* lpszClassName; typeof(DefWindowProcA)* lpfnWndProc;};
+struct WNDCLASS{int* hInstance; const char* lpszClassName; decltype(DefWindowProcA)* lpfnWndProc;};
+using WNDCLASSA = WNDCLASS;
 HWND GetModuleHandle(void*){ return HWND{};}
+HWND GetModuleHandleA(void*){ return HWND{};}
 using LPCSTR = char*;
 ATOM RegisterClass(WNDCLASS*) { return ATOM{};}
+ATOM RegisterClassA(WNDCLASS*) { return ATOM{};}
 void UnregisterClass(LPCSTR, HWND){}
+void UnregisterClassA(LPCSTR, HWND){}
 struct RECT{int left,right,top,bottom;};
 #define CW_USEDEFAULT 0
 #define SW_SHOWNORMAL 0
+#define SW_NORMAL 0
 void ShowWindow(HWND, int){}
 #define WS_OVERLAPPEDWINDOW 0
 struct MSG{int message;};
 #define PM_REMOVE 0
 int PeekMessage(MSG*, void*, int, int, int){ return 0; }
+int GetMessageA(MSG*, void*, int, int){ return 0; }
 void TranslateMessage(MSG*){}
+void TranslateMessageA(MSG*){}
 void DispatchMessage(MSG*){}
+void DispatchMessageA(MSG*){}
 HWND CreateWindowA(LPCSTR,...){ return nullptr; }
 void AdjustWindowRect(RECT*,...){}
+using HANDLE = void*;
+using HDC = HANDLE;
+void ReleaseDC(HWND, HDC);
+using HMONITOR = HANDLE;
+using BOOL = bool;
+using LPRECT = void*;
+typedef BOOL (*MONITORENUMPROC)(HMONITOR hMonitor,
+		HDC      hdcMonitor,
+		LPRECT   lprcMonitor,
+		LPARAM   dwData);
+struct MONITORINFOEXA{};
+bool GetMonitorInfoA(HMONITOR, MONITORINFOEXA*);
+void EnumDisplayMonitors(void*, void*, MONITORENUMPROC, LPARAM){}
+using DWORD = unsigned;
+struct DISPLAY_DEVICE {
+    int cb;
+};
+using DISPLAY_DEVICEA = DISPLAY_DEVICE;
+bool EnumDisplayDevicesA(const char*, DWORD, DISPLAY_DEVICE*, DWORD){ return 0; }
+struct DEVMODEA {
+    int dmSize;
+};
+DWORD ENUM_CURRENT_SETTINGS = 0;
+bool EnumDisplaySettingsA(const char*, DWORD, DEVMODEA*);
+struct DISPLAYCONFIG_PATH_INFO{};
+struct DISPLAYCONFIG_MODE_INFO{};
+using LONG = long;
+bool GetDisplayConfigBufferSizes(DWORD, DWORD*, DWORD*);
+DWORD ERROR_SUCCESS = 0;
+DWORD QueryDisplayConfig(DWORD, DWORD*, DISPLAYCONFIG_PATH_INFO*, DWORD*, DISPLAYCONFIG_MODE_INFO*, void*);
+DWORD QDC_ONLY_ACTIVE_PATHS = 0;
+DWORD ERROR_INSUFFICIENT_BUFFER = 120;
+using HKEY = HANDLE;
+using REGSAM = DWORD;
+DWORD RegOpenKeyExW(HKEY, void*, DWORD, REGSAM, void*) { return 0; }
+DWORD RegOpenKeyExA(HKEY, void*, DWORD, REGSAM, void*) { return 0; }
+DWORD RegCloseKey(HKEY) { return 0; }
 #endif
 
 #include <stdexcept>
