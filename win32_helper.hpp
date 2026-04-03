@@ -42,6 +42,7 @@ void TranslateMessageA(MSG*){}
 void DispatchMessage(MSG*){}
 void DispatchMessageA(MSG*){}
 HWND CreateWindowA(LPCSTR,...){ return nullptr; }
+HWND CreateWindowExA(LPCSTR,...){ return nullptr; }
 void AdjustWindowRect(RECT*,...){}
 using HANDLE = void*;
 using HDC = HANDLE;
@@ -191,6 +192,7 @@ private:
 	Window& m_window;
 };
 
+#ifdef _WIN32
 class DeviceContext {
 public:
 	DeviceContext(HWND hwnd, HDC hdc) : m_hwnd{ hwnd }, m_hdc { hdc } {
@@ -627,5 +629,6 @@ auto get_firmware_environment_variable_boot_option(bootnum_t boot_index) {
 
     return efi_load_option{buffer};
 }
+#endif
 
-}
+} //namespace win32_helper
